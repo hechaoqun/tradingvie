@@ -1,8 +1,13 @@
 import { Component, HttpStatus } from '@nestjs/common';
+import { ReqParam} from '../types';
 
 import * as IDatafeed from './datafeed-api.d';
 import * as fetch from 'isomorphic-fetch';
 import { Hesonogoma, GoogleFinance, GApiOutPut } from 'ns-findata';
+import * as getData from './ajax';
+import * as nanoajax from 'nanoajax';
+import { Util } from 'ns-common';
+import * as md5 from 'md5';
 
 export interface UdfCompatibleConfiguration extends IDatafeed.DatafeedConfiguration {
   supports_search?: boolean;
@@ -30,95 +35,141 @@ export class DatafeedService {
     return Math.floor(Date.now() / 1000) + '';
   }
 
+  async gettest(symbolName: string, from: number, to: number, resolution: string) {
+    // return await getData.Finance.get();
+    // return md5('message');
+    let time = 'kline_1m'
+    switch (resolution) {
+      case '5':
+      time = 'kline_5m'
+        break;
+      case '15':
+      time = 'kline_15m'
+        break;
+      case '30':
+      time = 'kline_30m'
+        break;
+      case '60':
+      time = 'kline_1h'
+        break;
+      case '1D':
+      time = 'kline_1d'
+        break;
+      case '1W':
+      time = 'kline_1w'
+        break;
+    }
+    const res = await getData.Finance.currencyList();
+    let currencyiID ;
+    res.currency_list.USDT.forEach((obj) => {
+      if ( obj.currency_mark === symbolName.toUpperCase()) {
+          currencyiID = obj.currency_id
+      }
+    })
+    const opt = {
+      currency_mark: symbolName,
+      currency: currencyiID,
+      basemark: '104',
+      time: time,
+      ts: Math.floor(Date.now() / 1000)
+    };
+    return await getData.Finance.getHistory(opt);
+  }
+
   async resolveSymbol(symbolName: string) {
-    const res = <string[][]>await hg.getFindDataInfo(hg.Data.FirstSection);
+    const reslist = await getData.Finance.currencyList();
+    const res = reslist.currency_list.USDT
     if (!res || res.length === 0) {
       return;
     }
     const symbolInfo = res.find(o => {
-      return o[0] === symbolName;
+      return o.currency_mark === symbolName;
     });
     if (!symbolInfo) {
       return;
     }
     return {
-      name: symbolInfo[1],
-      full_name: symbolInfo[1],
-      ticker: symbolInfo[0],
-      description: symbolInfo[1] + ' - ' + symbolInfo[2],
-      type: '股票',
-      session: '0900-1100,1230-1500',
-      exchange: '东京证券交易所',
-      listed_exchange: '东京证券交易所',
-      timezone: 'Asia/Tokyo',
-      pricescale: 1,
+      name: symbolInfo.currency_mark,
+      full_name: symbolInfo.currency_name,
+      ticker: symbolInfo.currency_mark,
+      description: symbolInfo.currency_mark + ' - ' + symbolInfo.currency_name,
+      type: '交易所',
+      session: '24*7',
+      exchange: 'digifinex交易所',
+      listed_exchange: 'digifinex交易所',
+      timezone: 'Asia/Shanghai',
+      pricescale: 8,
       minmov: 1,
       has_intraday: true,
       supported_resolutions,
       has_daily: true,
       has_weekly_and_monthly: true,
       has_no_volume: false,
-      sector: symbolInfo[2],
-      industry: symbolInfo[3],
-      currency_code: '日元',
+      sector: symbolInfo.currency_name,
+      industry: '交易所',
+      currency_code: 'USDT',
     };
   }
 
   async getHistory(symbolName: string, from: number, to: number, resolution: string) {
-    let i = 60, p = '1M';
+    let time = 'kline_1m'
     switch (resolution) {
       case '5':
-        i = 5 * 60
+      time = 'kline_5m'
         break;
       case '15':
-        i = 15 * 60
+      time = 'kline_15m'
         break;
       case '30':
-        i = 30 * 60
+      time = 'kline_30m'
         break;
       case '60':
-        i = 60 * 60
+      time = 'kline_1h'
         break;
       case '1D':
-        i = 24 * 60 * 60
-        p = '3M';
+      time = 'kline_1d'
         break;
       case '1W':
-        i = 7 * 24 * 60 * 60
-        p = '1y'
-        break;
-      case '1M':
-        p = '5y'
-        i = 4 * 7 * 24 * 60 * 60
+      time = 'kline_1w'
         break;
     }
+    const res = await getData.Finance.currencyList();
+    let currencyiID ;
+    res.currency_list.USDT.forEach((obj) => {
+      if ( obj.currency_mark === symbolName.toUpperCase()) {
+          currencyiID = obj.currency_id
+      }
+    })
     const opt = {
-      q: symbolName,
-      x: 'TYO',
-      p, i
+      currency_mark: symbolName,
+      currency: currencyiID,
+      basemark: '104',
+      time: time,
+      ts: Math.floor(Date.now() / 1000)
     };
-    const hisRes = await GoogleFinance.getHistory(opt);
+    const HisData = await getData.Finance.getHistory(opt);
+
     const t: number[] = [], c: number[] = [], o: number[] = [], l: number[] = [], h: number[] = [], v: number[] = [];
-    hisRes.forEach((obj: GApiOutPut) => {
-      t.push(obj.time);
-      if (obj.close) {
-        c.push(obj.close);
+    HisData[time].forEach((obj) => {
+      t.push(obj[0]);
+      if (obj[5]) {
+        c.push(obj[5]);
       }
-      if (obj.open) {
-        o.push(obj.open);
+      if (obj[2]) {
+        o.push(obj[2]);
       }
-      if (obj.low) {
-        l.push(obj.low);
+      if (obj[4]) {
+        l.push(obj[4]);
       }
-      if (obj.high) {
-        h.push(obj.high);
+      if (obj[3]) {
+        h.push(obj[3]);
       }
-      if (obj.volume) {
-        v.push(obj.volume);
+      if (obj[1]) {
+        v.push(obj[1]);
       }
     })
 
-    if (hisRes.length === 0) {
+    if (HisData.length === 0) {
       return {
         s: 'no_data'
       }
@@ -132,7 +183,8 @@ export class DatafeedService {
     symbolType: string,
     maxRecords?: number,
   ): Promise<IDatafeed.SearchSymbolResultItem[] | undefined> {
-    const res = <string[][]>await hg.getFindDataInfo(hg.Data.FirstSection);
+    const reslist = await getData.Finance.currencyList();
+    const res = reslist.currency_list.USDT
     if (!res || res.length === 0) {
       return;
     }
@@ -140,12 +192,12 @@ export class DatafeedService {
     res.forEach(o => {
       if (o && o.length !== 0) {
         const item: IDatafeed.SearchSymbolResultItem = {
-          symbol: o[0],
-          full_name: o[1],
-          description:  o[1] + ' - ' + o[2],
-          exchange: '东京证券交易所',
-          ticker: o[0],
-          type: '股票'
+          symbol: o.currency_mark,
+          full_name: o.currency_name,
+          description:  o.currency_intro,
+          exchange: 'digifinex',
+          ticker: o.currency_mark,
+          type: '交易所'
         };
         searchItems.push(item);
       }

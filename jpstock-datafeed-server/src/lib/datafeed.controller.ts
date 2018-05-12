@@ -25,6 +25,24 @@ export class DatafeedController {
     }
   }
 
+  @Get('test')
+  async test(
+    @Response() res: any,
+    @Query('symbol') symbol: string,
+    @Query('from') from: number,
+    @Query('to') to: number,
+    @Query('resolution') resolution: string,
+  ) {
+    console.log(new Date().toLocaleString(), '- GET test');
+    try {
+      this.setDefaultHeader(res);
+      const test = await this.datafeedService.gettest(symbol, from, to, resolution);
+      res.status(HttpStatus.OK).send(test);
+    } catch (e) {
+      throw new HttpException(e.message, HttpStatus.OK);
+    }
+  }
+
   @Get('config')
   config(@Response() res: any) {
     console.log(new Date().toLocaleString(), '- GET config');
