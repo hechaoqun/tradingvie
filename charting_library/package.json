@@ -4,7 +4,9 @@
   "description": "This repository contains Charting Library package. If you use Git in your project, please feel free to use this repo as a submodule to your one.",
   "main": "index.js",
   "dependencies": {},
-  "devDependencies": {},
+  "devDependencies": {
+    "http-server": "^0.11.1"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
