@@ -17,3 +17,5 @@ We use GitHub [Issues tracker](https://github.com/tradingview/charting_library/i
 ### Stay Tuned
 
 [Follow us](https://twitter.com/intent/follow?screen_name=tv_charts) on Twitter to receive the updates.
+
+启动：http-server
